@@ -396,14 +396,14 @@ STATICFILES_DIRS-{
 ##### 5.2 ORM解析过程
 
 - ORM将python代码转换为SQL语句
-- SQLy语句通过pymysql传送到数据库服务端
+- SQL语句通过pymysql传送到数据库服务端
 - 在数据库中执行SQL语句并将结果返回
 
 ORM对应关系表如下图：
 
 ![image-20211209181920048](Django.assets/image-20211209181920048.png)
 
-##### 5.3 Django操作数Mysql
+##### 5.3 Django操作Mysql
 
 ###### 5.3.1 数据库配置
 
@@ -420,7 +420,7 @@ Django不能执行创建数据库操作，只能操作到数据表，因此建�
 ```python
 mysql -uroot -p
 输入密码，进入mysql界面
-create database runoob default charset utf8;#这里末尾的 ; 不能漏
+create database runoob default charset utf8; #这里末尾的 ; 不能漏
 ```
 
 建库完，到setting下进行配置
@@ -457,7 +457,7 @@ Django规定，如果要用模型，则必须要建一个app，接下来建立�
 python manage.py startapp TestModel
 ```
 
-生成app目录之后，里面由很多py文件，其中由models.py
+生成app目录之后，里面由很多py文件，其中有models.py，用来操作数据库中数据表
 
 ```python
 from django.db import models
@@ -484,7 +484,7 @@ INSTALLED_APPS = [
 cmd到项目manage.py目录,，进行建表
 
 ```
-python manage.py makemigrations TestModel #让Django知道我们的模型是由变化的
+python manage.py makemigrations TestModel #让Django知道我们的模型是有变化的
 python manage.py migrate TestModel #创建表结构
 ```
 
@@ -718,7 +718,7 @@ def runoob(request):
 实例：
 def runoob(request):
 	name=request.path
-	print(name)#输出/runoob/
+	print(name) #输出/runoob/
 	return HttpResponse("菜鸟教程")
 ```
 
@@ -760,3 +760,349 @@ def runoob(request):
 	return redirect("/index/")
 ```
 
+#### 8.Django路由
+
+- 路由简单来说，就是根据用户请求的URL链接来判断对应的处理程序，并返回处理结果，即URL和Django之间建立映射关系
+
+- Django路由在urls.py中配置
+
+- 不同版本的Django的urls.py配置不一样
+
+  - Django1.1.x 版本
+
+    ```python
+    url()方法：普通路径和正则路径均可使用，需要手动添加正则首位限制符号
+    from django.conf.urls import url #引入urls
+    
+    urlpatterns=[
+        url(r'^admin/$',admin.site.urls),
+        url(r'^index/$',views.index), #普通路径
+        url(r'^articles/([0-9]{4})/$',view.articles), #正则路径  
+    ]
+    ```
+
+  - Django2.2.x 版本
+
+    ```python
+    path()方法：用于普通路径，不需要手动添加正则首位限制符号
+    re_path()方法：用于正则路径，需要手动添加正则首位限制符号
+    from django.urls import re_path
+    
+    urlpatterns=[
+        path('admin/',admin.site.urls),
+        path('index/',views.index),
+        re_path(r'^articles/([0-9]{4})/$',view.articles),
+    ]
+    ```
+
+#### 9.Django Admin管理工具
+
+Django自动管理工具是django.contrib中的一部分，可以在setting.py 中的INSTALLED_APPS看到它。
+
+##### 9.1 激活管理工具
+
+在urls.py中配置以下代码
+
+```python
+from django.conf.urls import url
+from django.contrib import admin
+
+urlpatterns=[
+    url(r'^admin/',admin.site.urls),
+]
+```
+
+##### 9.2 使用管理工具
+
+启动服务器，在浏览器中打开**127.0.0.1:8000/admin/**， 出来以下界面
+
+![image-20211210101720878](Django.assets/image-20211210101720878.png)
+
+之后进入manage.py所在的目录文件，添加超级用户
+
+```cmd
+python manage.py createsuperuser
+
+说明：如果在创建超级用户时出现以下错误时，解决方案如下：
+①1146, “Table ‘django_session’ doesn’t exist”
+在cmd中分别执行 
+python manage.py makemigration session
+python manage.py migrate session
+
+②1146, “Table ‘auth_user’ doesn’t exist”
+在cmd中分别执行 
+python manage.py makemigration
+python manage.py migrate 
+```
+
+添加之后，实现超级用户的登录
+
+![image-20211210102110284](Django.assets/image-20211210102110284.png)
+
+为了让admin界面管理某个数据模型，需要先将数据模型注册到admin中，之前我们已经有TestModel的app，里面创建了Test模型，修改TestModel里面admin.py
+
+```python
+from django.contrib import admin
+from TestModel.models import Test
+
+# Register your models here.
+
+admin.site.register(Test)
+```
+
+再次打开时，TESTMODEL就被加载进来了
+
+![image-20211210102931609](Django.assets/image-20211210102931609.png)
+
+##### 9.3 复杂模型
+
+复杂模型是指admin可以同时管理models.py里的多个模型（数据库中的多张表）
+
+现在models.py中添加两张表（一共有三张表，之前建立了Test模型）
+
+```python
+from django.db import models
+
+# Create your models here.
+class Test(models.Model):
+	name=models.CharField(max_length=20)
+
+class Contact(models.Model):
+	name=models.CharField(max_length=200)
+	age=models.IntegerField(default=0)
+	email=models.EmailField()
+	def __unicode__(self):
+		return self.name
+
+
+class Tag(models.Model):
+	contact=models.ForeignKey(Contact, on_delete=models.CASCADE,)
+	name=models.CharField(max_length=50)
+	def __unicode__(self):
+		return self.name
+```
+
+通过cmd在数据库中创建这三张表
+
+```cmd
+python manage.py makemigrations TestModel
+python manage.py migrate TestModel
+```
+
+在admin.py中添加这三张表
+
+```python
+from django.contrib import admin
+from TestModel.models import Test,Contact,Tag
+
+# Register your models here.
+ 
+admin.site.register([Test,Contact,Tag])
+```
+
+运行结果如下图
+
+![image-20211210105143664](Django.assets/image-20211210105143664.png)
+
+##### 9.4 自定义表单
+
+之间来设置管理页面，改变原来默认的页面，
+
+- 实例1：比如在Contact模型的add页面只显示name和email，可以这样设置，在admin.py中
+
+```python
+from django.contrib import admin
+from TestModel.models import Test,Contact,Tag
+
+# Register your models here.
+
+class ContactAdmin(admin.ModelAdmin):
+	fields=('name','email')#定义了一个类，说明管理页面的显示格式
+
+admin.site.register(Contact,ContactAdmin)
+admin.site.register([Test,Tag])
+```
+
+实现效果
+
+![image-20211210111158515](Django.assets/image-20211210111158515.png)
+
+实例2：分栏展示，在admin.py中
+
+```python
+# Register your models here.
+
+class ContactAdmin(admin.ModelAdmin):
+	fieldsets=(
+		['Main',{
+			'fields':('name','email'),
+		}],
+		['Advance',{
+			'classes':('collapse'),#CSS
+			'fields':('age',),
+		}]
+		)
+
+admin.site.register(Contact,ContactAdmin)
+admin.site.register([Test,Tag])
+```
+
+实现效果
+
+![image-20211210111849336](Django.assets/image-20211210111849336.png)
+
+##### 9.5 内联（Inline）显示
+
+实现内联的原因：Contact时Tag的外键，为了体现两者的关系，将两者放在同一页面中
+
+admin.py文件代码
+
+```python
+from django.contrib import admin
+from TestModel.models import Test,Contact,Tag
+
+# Register your models here.
+# 
+class TagInline(admin.TabularInline):
+	model=Tag
+
+class ContactAdmin(admin.ModelAdmin):
+	inlines=[TagInline]
+	fieldsets=(
+		['Main',{
+			'fields':('name','email'),
+		}],
+		['Advance',{
+			'classes':('collapse'),#CSS
+			'fields':('age',),
+		}]
+		)
+
+admin.site.register(Contact,ContactAdmin)
+admin.site.register([Test])
+```
+
+实现效果
+
+![image-20211210112527060](Django.assets/image-20211210112527060.png)
+
+##### 9.6 列表页显示
+
+实现Contact数据列表展示同时有搜索功能
+
+admin.py文件代码
+
+```python
+from django.contrib import admin
+from TestModel.models import Test,Contact,Tag
+
+# Register your models here.
+# 
+class TagInline(admin.TabularInline):
+	model=Tag
+
+class ContactAdmin(admin.ModelAdmin):
+	list_display=('name','age','email')#列表展示
+	search_fields=('name',)#搜索功能
+	inlines=[TagInline]
+	fieldsets=(
+		['Main',{
+			'fields':('name','email'),
+		}],
+		['Advance',{
+			'classes':('collapse'),#CSS
+			'fields':('age',),
+		}]
+		)
+
+admin.site.register(Contact,ContactAdmin)
+admin.site.register([Test])
+```
+
+实现效果
+
+![image-20211210113249556](Django.assets/image-20211210113249556.png)
+
+![image-20211210113308676](Django.assets/image-20211210113308676.png)
+
+#### 10.单表实例
+
+##### 10.1 数据库添加
+
+方式1：实例化对象之后执行**对象.save()**
+
+```python
+from django.shortcuts import render,HttpResponse
+from app01 import models
+def add_book(request):
+	book=models.Book(title='菜鸟教程',price=300,publish='菜鸟出版社',pub_date="2021-12-10")
+	book.save()
+	return HttpResponse("<p>查找成功！</p>")
+```
+
+方式2：通过ORM提供的objects提供的create方法来实现
+
+```python
+from django.shortcuts import render,HttpResponse
+from app01 import models
+def add_book(request):
+	book=models.Book.objects.create(title='菜鸟教程',price=300,publish='菜鸟出版社',pub_date="2021-12-10")
+	return HttpResponse("<p>查找成功！</p>")
+```
+
+##### 10.2 数据库查找
+
+```python
+all()：books=models.Book.objects.all()
+filter():books=models.Book.objects.filter(pk=5)
+exclude():查询不符合条件的数据
+get():查询符合条件的对象，该对象只能由一个，超出或者没有都会报错
+order_by(): 
+	升序：book=models.Book.objects.order_by("price")
+	降序：book=models.Book.objects.order_by("-price")
+reverse():对查询结果进行反转
+count():查询数据的数量返回的数据是整数
+first():返回所有数据的第一条数据
+last():返回所有数据的最后一条数据
+exist():判断查询结果QuerySet是否有数据
+
+values():查询部分字段的数据，不是对象而是数据
+values_list():查询某个字段相对应的数据，得到的是一个元组
+
+distinct():去重
+——gt:大于号 books=models.Book.objects.filter(price__gt=200)
+__gte:大于等号
+__lt:小于号
+__lte:小于等于
+__range:左闭右闭区间
+__contains:包含 book=models.Book.objects.filter(title__contains="菜"）
+__icontains:不区分大小写的包含
+__startwith:以指定的字符开头
+__endwith:以指定的字符结束
+__year:是DateField数据类型的年份
+__month:是DateField数据类型的月份
+__day:是DateField数据类型的天数
+```
+
+##### 10.3 数据库删除
+
+- 对象.delete()
+- 数据类型.delete()
+
+##### 10.4 数据库修改
+
+方式1：
+
+```python
+book=models.Book.objects.filter(pk=7).first()
+book.price=400
+book.save()
+```
+
+方式2：
+
+```
+book=models.Book.objects.filter(pk__in=[7,8]).update(price=888)
+```
+
+#### 11.多表实例
